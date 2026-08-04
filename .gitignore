@@ -1,0 +1,35 @@
+node_modules/
+dist/
+*.log
+.env
+page.html
+rune-data-raw.js
+rune-snippet.js
+
+# OCR language data is required at runtime
+tessdata/*
+!tessdata/kor.traineddata
+/eng.traineddata
+/kor.traineddata
+
+# Debug / sample captures
+assets/crop-*.png
+assets/sample-*.png
+assets/debug*/
+assets/samples/
+assets/slots/
+assets/glyphs/
+assets/runes-ingame/
+assets/ocr-*.png
+assets/user-*.png
+assets/*ink*.png
+assets/game-full.png
+assets/grid-*.png
+assets/final-*.png
+assets/repro-*.png
+assets/win-ocr-out.txt
+assets/portable-extract-test/
+
+assets/debug-*.png
+assets/runes/_crop_*.png
+

@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>룬워드</title>
+  <link rel="stylesheet" href="result.css" />
+</head>
+<body>
+  <div class="rw-shell">
+    <header class="rw-titlebar">
+      <div class="rw-title-left">
+        <span class="rw-title">룬워드</span>
+        <div class="rw-progress">
+          <div class="rw-progress-fill" id="score-fill"></div>
+          <span class="rw-progress-text" id="score-progress">0/500</span>
+        </div>
+        <span class="rw-tier-badge" id="tier-badge">대기</span>
+        <span class="rw-tier-inline" id="tier-text">캡쳐 후 분석</span>
+      </div>
+      <div class="rw-title-actions">
+        <button type="button" id="btn-toggle-capture" class="rw-icon-btn" title="캡쳐창">캡쳐</button>
+        <button type="button" id="btn-auto" class="rw-icon-btn rw-auto" title="1초 자동분석">자동 OFF</button>
+        <button type="button" id="btn-analyze" class="rw-icon-btn rw-analyze" title="분석 (Ctrl+Shift+R)">분석</button>
+      </div>
+    </header>
+
+    <div class="rw-body">
+      <section class="rw-col rw-col-left">
+        <div class="rw-section-title">
+          <span class="rw-mark">▣</span>룬 리스트
+        </div>
+        <div class="rw-grid" id="rune-grid"></div>
+      </section>
+
+      <section class="rw-col rw-col-right">
+        <div class="rw-circle-wrap">
+          <div class="rw-circle" id="rune-circle">
+            <div class="rw-circle-empty">분석 실행</div>
+          </div>
+          <div class="rw-score-chip">
+            <span id="score-value">—</span><small>점</small>
+          </div>
+        </div>
+
+        <div class="rw-section-title">
+          <span class="rw-mark">✦</span>습득한 룬 효과
+        </div>
+        <div class="rw-effects-frame">
+          <div class="rw-effects-box" id="effects-box">
+            <div class="rw-effects-empty">아직 효과 없음</div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <footer class="rw-footer">
+      <span id="status">준비됨</span>
+      <details class="debug">
+        <summary>디버그</summary>
+        <div id="runes" hidden></div>
+        <pre id="ocr-text"></pre>
+        <div class="preview-row">
+          <img id="preview-full" alt="" />
+          <img id="preview-effects" alt="" />
+        </div>
+      </details>
+      <span class="rw-hotkey">Ctrl+Shift+R</span>
+    </footer>
+  </div>
+
+  <script src="result.js"></script>
+</body>
+</html>

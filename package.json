@@ -1,0 +1,82 @@
+{
+  "name": "latale-runeword-analyzer",
+  "version": "1.0.0",
+  "description": "La Tale Rune Word tier analyzer - OCR capture tool",
+  "main": "main.js",
+  "author": "",
+  "license": "MIT",
+  "scripts": {
+    "start": "electron .",
+    "test:analyzer": "node scripts/test-analyzer.js",
+    "dist": "electron-builder --win zip",
+    "dist:zip": "electron-builder --win zip",
+    "dist:portable": "electron-builder --win portable",
+    "dist:dir": "electron-builder --win dir"
+  },
+  "dependencies": {
+    "screenshot-desktop": "^1.15.1",
+    "sharp": "^0.33.5",
+    "tesseract.js": "^5.1.1"
+  },
+  "devDependencies": {
+    "electron": "^33.2.0",
+    "electron-builder": "^25.1.8",
+    "png-to-ico": "^3.0.2"
+  },
+  "build": {
+    "appId": "com.latale.runeword-analyzer",
+    "productName": "LataleRunewordAnalyzer",
+    "copyright": "Copyright © Latale Runeword Analyzer",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "renderer/**/*",
+      "src/**/*",
+      "tessdata/**/*",
+      "assets/icon.ico",
+      "assets/icon.png",
+      "assets/icon-256.png",
+      "assets/runes/**/*",
+      "!**/*.map",
+      "!scripts/**",
+      "!assets/samples/**",
+      "!assets/slots/**",
+      "!assets/glyphs/**",
+      "!assets/runes-ingame/**",
+      "!assets/debug*/**",
+      "!assets/crop-*/**",
+      "!assets/ocr-*/**",
+      "!assets/user-*/**",
+      "!assets/sample-*/**",
+      "!assets/*ink*.png",
+      "!assets/game-full.png",
+      "!assets/grid-*.png",
+      "!assets/final-*.png",
+      "!assets/repro-*.png",
+      "!assets/win-ocr-out.txt",
+      "!page.html",
+      "!rune-*.js",
+      "!*.traineddata"
+    ],
+    "asarUnpack": [
+      "**/node_modules/sharp/**/*",
+      "**/node_modules/@img/**/*",
+      "**/node_modules/screenshot-desktop/**/*",
+      "tessdata/**/*"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "zip",
+          "arch": ["x64"]
+        }
+      ],
+      "icon": "assets/icon.ico",
+      "artifactName": "LataleRunewordAnalyzer-${version}-win64.${ext}",
+      "signAndEditExecutable": false
+    }
+  }
+}

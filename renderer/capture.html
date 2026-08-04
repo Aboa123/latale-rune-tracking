@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>룬워드 캡쳐</title>
+  <link rel="stylesheet" href="capture.css" />
+</head>
+<body>
+  <div class="frame">
+    <!-- 가장자리만 클릭(리사이즈/드래그), 중앙은 게임으로 클릭 통과 -->
+    <div class="edge edge-n hit drag"></div>
+    <div class="edge edge-s hit drag"></div>
+    <div class="edge edge-w hit"></div>
+    <div class="edge edge-e hit"></div>
+
+    <div class="chrome hit drag">
+      <span class="title">룬워드 전체 · 원형+효과목록 · 중앙 통과</span>
+      <div class="actions no-drag">
+        <button type="button" id="btn-analyze" title="분석">분석</button>
+        <button type="button" id="btn-hide" title="숨기기">−</button>
+      </div>
+    </div>
+
+    <div class="hole"></div>
+
+    <div class="hint hit drag">첨부처럼 룬워드 창 전체에 맞추기</div>
+  </div>
+  <script src="capture.js"></script>
+</body>
+</html>

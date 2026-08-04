@@ -1,0 +1,360 @@
+[
+  {
+    "id": 1,
+    "name": "《 혈통 》",
+    "off": "https://okane2020.cafe24.com/LataleInfo/OFF_1.jpg",
+    "on": "https://okane2020.cafe24.com/LataleInfo/ON_1.jpg",
+    "score": 6,
+    "desc": "근력/마법력 +1500",
+    "effects": [
+      "근력/마법력 +1500"
+    ]
+  },
+  {
+    "id": 2,
+    "name": "《 강철 》",
+    "off": "https://okane2020.cafe24.com/LataleInfo/OFF_2.jpg",
+    "on": "https://okane2020.cafe24.com/LataleInfo/ON_2.jpg",
+    "score": 2.5,
+    "desc": "체력 +1500",
+    "effects": [
+      "체력 +1500"
+    ]
+  },
+  {
+    "id": 3,
+    "name": "《 행운 》",
+    "off": "https://okane2020.cafe24.com/LataleInfo/OFF_3.jpg",
+    "on": "https://okane2020.cafe24.com/LataleInfo/ON_3.jpg",
+    "score": 0,
+    "desc": "행운 +1500",
+    "effects": [
+      "행운 +1500"
+    ]
+  },
+  {
+    "id": 4,
+    "name": "《 서약 》",
+    "off": "https://okane2020.cafe24.com/LataleInfo/OFF_4.jpg",
+    "on": "https://okane2020.cafe24.com/LataleInfo/ON_4.jpg",
+    "score": 0,
+    "desc": "퀘스트 보상 +20%, 옵션 발생 확률 +500%",
+    "effects": [
+      "퀘스트 보상 +20%",
+      "옵션 발생 확률 +500%"
+    ]
+  },
+  {
+    "id": 5,
+    "name": "《 분노 》",
+    "off": "https://okane2020.cafe24.com/LataleInfo/OFF_5.jpg",
+    "on": "https://okane2020.cafe24.com/LataleInfo/ON_5.jpg",
+    "score": 14,
+    "desc": "공격력/속성력 +70",
+    "effects": [
+      "공격력/속성력 +70"
+    ]
+  },
+  {
+    "id": 6,
+    "name": "《 축복 》",
+    "off": "https://okane2020.cafe24.com/LataleInfo/OFF_6.jpg",
+    "on": "https://okane2020.cafe24.com/LataleInfo/ON_6.jpg",
+    "score": 0,
+    "desc": "이동 속도 +50%",
+    "effects": [
+      "이동 속도 +50%"
+    ]
+  },
+  {
+    "id": 7,
+    "name": "《 헌신 》",
+    "off": "https://okane2020.cafe24.com/LataleInfo/OFF_7.jpg",
+    "on": "https://okane2020.cafe24.com/LataleInfo/ON_7.jpg",
+    "score": 15,
+    "desc": "최소 대미지 +50%",
+    "effects": [
+      "최소 대미지 +50%"
+    ]
+  },
+  {
+    "id": 8,
+    "name": "《 풍요 》",
+    "off": "https://okane2020.cafe24.com/LataleInfo/OFF_8.jpg",
+    "on": "https://okane2020.cafe24.com/LataleInfo/ON_8.jpg",
+    "score": 0,
+    "desc": "아이템 발생 확률 +20%",
+    "effects": [
+      "아이템 발생 확률 +20%"
+    ]
+  },
+  {
+    "id": 9,
+    "name": "《 파괴 》",
+    "off": "https://okane2020.cafe24.com/LataleInfo/OFF_9.jpg",
+    "on": "https://okane2020.cafe24.com/LataleInfo/ON_9.jpg",
+    "score": 50,
+    "desc": "최대 대미지 +50%",
+    "effects": [
+      "최대 대미지 +50%"
+    ]
+  },
+  {
+    "id": 10,
+    "name": "《 지혜 》",
+    "off": "https://okane2020.cafe24.com/LataleInfo/OFF_10.jpg",
+    "on": "https://okane2020.cafe24.com/LataleInfo/ON_10.jpg",
+    "score": 0,
+    "desc": "조합 성공확률 +5%",
+    "effects": [
+      "조합 성공확률 +5%"
+    ]
+  },
+  {
+    "id": 11,
+    "name": "《 파멸 》",
+    "off": "https://okane2020.cafe24.com/LataleInfo/OFF_11.jpg",
+    "on": "https://okane2020.cafe24.com/LataleInfo/ON_11.jpg",
+    "score": 50,
+    "desc": "크리티컬 대미지 +50%",
+    "effects": [
+      "크리티컬 대미지 +50%"
+    ]
+  },
+  {
+    "id": 12,
+    "name": "《 신뢰 》",
+    "off": "https://okane2020.cafe24.com/LataleInfo/OFF_12.jpg",
+    "on": "https://okane2020.cafe24.com/LataleInfo/ON_12.jpg",
+    "score": 0,
+    "desc": "명중률 +20%",
+    "effects": [
+      "명중률 +20%"
+    ],
+    "aliases": [
+      "인챈트 성공확률 +1%",
+      "인챈트 성공 확률 +1%"
+    ]
+  },
+  {
+    "id": 13,
+    "name": "《 열정 》",
+    "off": "https://okane2020.cafe24.com/LataleInfo/OFF_13.jpg",
+    "on": "https://okane2020.cafe24.com/LataleInfo/ON_13.jpg",
+    "score": 3,
+    "desc": "고정 대미지 +1500",
+    "effects": [
+      "고정 대미지 +1500"
+    ]
+  },
+  {
+    "id": 14,
+    "name": "《 인내 》",
+    "off": "https://okane2020.cafe24.com/LataleInfo/OFF_14.jpg",
+    "on": "https://okane2020.cafe24.com/LataleInfo/ON_14.jpg",
+    "score": 0,
+    "desc": "경험치 획득량 +10%",
+    "effects": [
+      "경험치 획득량 +10%"
+    ]
+  },
+  {
+    "id": 15,
+    "name": "《 격노 》",
+    "off": "https://okane2020.cafe24.com/LataleInfo/OFF_15.jpg",
+    "on": "https://okane2020.cafe24.com/LataleInfo/ON_15.jpg",
+    "score": 20,
+    "desc": "공격력/속성력 +5%",
+    "effects": [
+      "공격력/속성력 +5%"
+    ]
+  },
+  {
+    "id": 16,
+    "name": "《 열광 》",
+    "off": "https://okane2020.cafe24.com/LataleInfo/OFF_16.jpg",
+    "on": "https://okane2020.cafe24.com/LataleInfo/ON_16.jpg",
+    "score": 20,
+    "desc": "고정 대미지 +8%",
+    "effects": [
+      "고정 대미지 +8%"
+    ]
+  },
+  {
+    "id": 17,
+    "name": "《 생명 》",
+    "off": "https://okane2020.cafe24.com/LataleInfo/OFF_17.jpg",
+    "on": "https://okane2020.cafe24.com/LataleInfo/ON_17.jpg",
+    "score": 10,
+    "desc": "최대 HP +5%",
+    "effects": [
+      "최대 HP +5%"
+    ]
+  },
+  {
+    "id": 18,
+    "name": "《 평화 》",
+    "off": "https://okane2020.cafe24.com/LataleInfo/OFF_18.jpg",
+    "on": "https://okane2020.cafe24.com/LataleInfo/ON_18.jpg",
+    "score": 8.5,
+    "desc": "올스탯 +1500",
+    "effects": [
+      "올스탯 +1500"
+    ]
+  },
+  {
+    "id": 19,
+    "name": "《 조화 》",
+    "off": "https://okane2020.cafe24.com/LataleInfo/OFF_19.jpg",
+    "on": "https://okane2020.cafe24.com/LataleInfo/ON_19.jpg",
+    "score": 22.5,
+    "desc": "올스탯 +5%",
+    "effects": [
+      "올스탯 +5%"
+    ]
+  },
+  {
+    "id": 20,
+    "name": "《 통찰 》",
+    "off": "https://okane2020.cafe24.com/LataleInfo/OFF_20.jpg",
+    "on": "https://okane2020.cafe24.com/LataleInfo/ON_20.jpg",
+    "score": 75,
+    "desc": "물리/마법 관통력 +10%, 타격 시 0.1% 확률로 쿨타임 1초 감소",
+    "effects": [
+      "물리/마법 관통력 +10%",
+      "타격 시 0.1% 확률로 쿨타임 1초 감소"
+    ],
+    "kingEffects": [
+      "물리/마법 관통력 +20%",
+      "타격 시 0.2% 확률로 쿨타임 1초 감소"
+    ]
+  },
+  {
+    "id": 21,
+    "name": "《 평화 & 조화 》",
+    "off": "https://okane2020.cafe24.com/LataleInfo/OFF_21.jpg",
+    "on": "https://okane2020.cafe24.com/LataleInfo/ON_21.jpg",
+    "score": 31,
+    "desc": "올스탯 +1500, 올스탯 +5%",
+    "effects": [
+      "올스탯 +1500",
+      "올스탯 +5%"
+    ]
+  },
+  {
+    "id": 22,
+    "name": "《 열정 & 분노 》",
+    "off": "https://okane2020.cafe24.com/LataleInfo/OFF_22.jpg",
+    "on": "https://okane2020.cafe24.com/LataleInfo/ON_22.jpg",
+    "score": 17,
+    "desc": "고정 대미지 +1500, 공격력/속성력 +70",
+    "effects": [
+      "고정 대미지 +1500",
+      "공격력/속성력 +70"
+    ]
+  },
+  {
+    "id": 23,
+    "name": "《 강철 & 생명 》",
+    "off": "https://okane2020.cafe24.com/LataleInfo/OFF_23.jpg",
+    "on": "https://okane2020.cafe24.com/LataleInfo/ON_23.jpg",
+    "score": 12.5,
+    "desc": "체력 +1500, 최대 HP +5%",
+    "effects": [
+      "체력 +1500",
+      "최대 HP +5%"
+    ]
+  },
+  {
+    "id": 24,
+    "name": "《 인내 & 서약 》",
+    "off": "https://okane2020.cafe24.com/LataleInfo/OFF_24.jpg",
+    "on": "https://okane2020.cafe24.com/LataleInfo/ON_24.jpg",
+    "score": 0,
+    "desc": "경험치 획득량 +10%, 퀘스트 보상률 +30%",
+    "effects": [
+      "경험치 획득량 +10%",
+      "퀘스트 보상률 +30%"
+    ]
+  },
+  {
+    "id": 25,
+    "name": "《 열광 & 격노 》",
+    "off": "https://okane2020.cafe24.com/LataleInfo/OFF_25.jpg",
+    "on": "https://okane2020.cafe24.com/LataleInfo/ON_25.jpg",
+    "score": 40,
+    "desc": "고정 대미지 +8%, 공격력/속성력 +5%",
+    "effects": [
+      "고정 대미지 +8%",
+      "공격력/속성력 +5%"
+    ]
+  },
+  {
+    "id": 26,
+    "name": "《 헌신 & 파괴 》",
+    "off": "https://okane2020.cafe24.com/LataleInfo/OFF_26.jpg",
+    "on": "https://okane2020.cafe24.com/LataleInfo/ON_26.jpg",
+    "score": 65,
+    "desc": "최소 대미지 +50%, 최대 대미지 +50%",
+    "effects": [
+      "최소 대미지 +50%",
+      "최대 대미지 +50%"
+    ]
+  },
+  {
+    "id": 27,
+    "name": "《 축복 & 풍요 》",
+    "off": "https://okane2020.cafe24.com/LataleInfo/OFF_27.jpg",
+    "on": "https://okane2020.cafe24.com/LataleInfo/ON_27.jpg",
+    "score": 0,
+    "desc": "이동 속도 +50%, 아이템 발생 확률 +20%",
+    "effects": [
+      "이동 속도 +50%",
+      "아이템 발생 확률 +20%"
+    ]
+  },
+  {
+    "id": 28,
+    "name": "《 야성 & 지배 》",
+    "off": "https://okane2020.cafe24.com/LataleInfo/OFF_28.jpg",
+    "on": "https://okane2020.cafe24.com/LataleInfo/ON_28.jpg",
+    "score": 45,
+    "desc": "일반 몬스터 대미지 +6000, 일반 몬스터 지배력 +3%",
+    "effects": [
+      "일반 몬스터 대미지 +6000",
+      "일반 몬스터 지배력 +3%"
+    ],
+    "kingEffects": [
+      "일반 몬스터 대미지 +12000",
+      "일반 몬스터 지배력 +6%"
+    ],
+    "aliases": [
+      "일반 몬스터 추가 대미지 +6000",
+      "일반 몬스터 추가 대미지 +12000"
+    ]
+  },
+  {
+    "id": 29,
+    "name": "《 악몽 & 죽음 》",
+    "off": "https://okane2020.cafe24.com/LataleInfo/OFF_29.jpg",
+    "on": "https://okane2020.cafe24.com/LataleInfo/ON_29.jpg",
+    "score": 45,
+    "desc": "보스 몬스터 대미지 +10000, 보스 몬스터 지배력 +5%",
+    "effects": [
+      "보스 몬스터 대미지 +10000",
+      "보스 몬스터 지배력 +5%"
+    ]
+  },
+  {
+    "id": 30,
+    "name": "《 파멸 & 폭주 》",
+    "off": "https://okane2020.cafe24.com/LataleInfo/OFF_30.jpg",
+    "on": "https://okane2020.cafe24.com/LataleInfo/ON_30.jpg",
+    "score": 55,
+    "desc": "크리티컬 대미지 +50%, 크리티컬 확률 +1%",
+    "effects": [
+      "크리티컬 대미지 +50%",
+      "크리티컬 확률 +1%"
+    ]
+  }
+]

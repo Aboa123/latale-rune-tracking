@@ -1,0 +1,133 @@
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: transparent;
+  font-family: "Malgun Gothic", sans-serif;
+  user-select: none;
+}
+
+.frame {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: grid;
+  grid-template-rows: 38px 1fr 28px;
+  border: 3px solid #ef2222;
+  background: transparent;
+  box-shadow: inset 0 0 0 1px rgba(255, 80, 80, 0.35);
+}
+
+.edge {
+  position: absolute;
+  z-index: 5;
+  background: transparent;
+}
+
+.edge-n {
+  top: 0;
+  left: 12px;
+  right: 12px;
+  height: 8px;
+  cursor: ns-resize;
+}
+
+.edge-s {
+  bottom: 0;
+  left: 12px;
+  right: 12px;
+  height: 8px;
+  cursor: ns-resize;
+}
+
+.edge-w {
+  top: 12px;
+  bottom: 12px;
+  left: 0;
+  width: 8px;
+  cursor: ew-resize;
+}
+
+.edge-e {
+  top: 12px;
+  bottom: 12px;
+  right: 0;
+  width: 8px;
+  cursor: ew-resize;
+}
+
+.chrome {
+  position: relative;
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0 8px 0 12px;
+  background: rgba(120, 12, 12, 0.92);
+  color: #ffe8e8;
+  font-size: 12px;
+  font-weight: 700;
+  border-bottom: 2px solid #ef2222;
+}
+
+.drag {
+  -webkit-app-region: drag;
+}
+
+.no-drag {
+  -webkit-app-region: no-drag;
+}
+
+.actions {
+  display: flex;
+  gap: 6px;
+}
+
+.actions button {
+  border: 1px solid #5a1010;
+  border-radius: 4px;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  color: #fff;
+  background: #dc2626;
+}
+
+.actions button:hover {
+  background: #ef4444;
+}
+
+#btn-hide {
+  background: rgba(0, 0, 0, 0.35);
+  min-width: 28px;
+}
+
+.hole {
+  margin: 0;
+  border: 0;
+  background: transparent;
+  /* 게임 버튼(사용하기 등) 클릭이 통과 */
+  pointer-events: none;
+}
+
+.hint {
+  position: relative;
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+  color: #ffe4e4;
+  background: rgba(110, 10, 10, 0.9);
+  border-top: 2px solid #ef2222;
+}
