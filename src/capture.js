@@ -344,7 +344,10 @@ async function detectPinkLineHints(pngBuffer, lineCountHint = 14) {
   return pinkBands;
 }
 
-/** Extract only magenta king-effect text as black text on white. */
+/**
+ * Magenta/pink king-effect ink → black text on white.
+ * Tolerant HSV-ish pink, row clustering, and mild dilation so thin strokes OCR well.
+ */
 async function extractPinkTextPng(pngBuffer, zoom = 4) {
   const { data, info } = await sharp(pngBuffer)
     .removeAlpha()
@@ -352,45 +355,103 @@ async function extractPinkTextPng(pngBuffer, zoom = 4) {
     .toBuffer({ resolveWithObject: true });
   const { width, height } = info;
   const rowCounts = new Uint32Array(height);
-  const xMin = Math.round(width * 0.05);
-  const xMax = Math.round(width * 0.95);
-  const yMin = Math.round(height * 0.08);
+  const xMin = Math.round(width * 0.03);
+  const xMax = Math.round(width * 0.97);
+  // King effects sit in the lower half of the effect list more often than the top
+  const yMin = Math.round(height * 0.05);
 
-  const isPink = (r, g, b) =>
-    r > 180 && b > 120 && g < 175 && r - g > 35 && b - g > 20;
+  // Magenta UI text: reddish + purplish channels, not pure red UI chrome
+  const isPink = (r, g, b) => {
+    if (r < 150 || b < 90) return false;
+    if (g > 190) return false;
+    if (r - g < 25) return false;
+    if (b - g < 8 && r - b > 80) return false; // pure red-ish UI highlights
+    // Prefer purple-pink: blue still significant
+    if (b < 100 && r > 220) return false;
+    const max = Math.max(r, g, b);
+    const min = Math.min(r, g, b);
+    if (max - min < 28) return false; // grey
+    return true;
+  };
 
+  const pinkMask = new Uint8Array(width * height);
   for (let y = yMin; y < height; y++) {
     for (let x = xMin; x < xMax; x++) {
       const i = (y * width + x) * 3;
-      if (isPink(data[i], data[i + 1], data[i + 2])) rowCounts[y]++;
-    }
-  }
-
-  const activeRows = [];
-  for (let y = yMin; y < height; y++) {
-    if (rowCounts[y] >= 3) activeRows.push(y);
-  }
-  if (!activeRows.length) return null;
-
-  const top = Math.max(0, activeRows[0] - 5);
-  const bottom = Math.min(height, activeRows[activeRows.length - 1] + 6);
-  const cropH = Math.max(1, bottom - top);
-  const out = Buffer.alloc(width * cropH * 3, 255);
-
-  for (let y = top; y < bottom; y++) {
-    for (let x = 0; x < width; x++) {
-      const src = (y * width + x) * 3;
-      const dst = ((y - top) * width + x) * 3;
-      if (isPink(data[src], data[src + 1], data[src + 2])) {
-        out[dst] = 0;
-        out[dst + 1] = 0;
-        out[dst + 2] = 0;
+      if (isPink(data[i], data[i + 1], data[i + 2])) {
+        pinkMask[y * width + x] = 1;
+        rowCounts[y]++;
       }
     }
   }
 
+  // Keep densest consecutive pink row clusters (drop scattered chrome pixels)
+  const activeRows = [];
+  for (let y = yMin; y < height; y++) {
+    if (rowCounts[y] >= 2) activeRows.push(y);
+  }
+  if (!activeRows.length) return null;
+
+  // Prefer the bottom-most cluster of rows (king lines live under normal blue text)
+  const clusters = [];
+  let start = activeRows[0];
+  let prev = activeRows[0];
+  for (let i = 1; i < activeRows.length; i++) {
+    const y = activeRows[i];
+    if (y - prev > 8) {
+      clusters.push({ start, end: prev });
+      start = y;
+    }
+    prev = y;
+  }
+  clusters.push({ start, end: prev });
+  // Score: favor lower + thicker bands
+  clusters.sort((a, b) => {
+    const ha = a.end - a.start;
+    const hb = b.end - b.start;
+    const ya = (a.start + a.end) / 2 / height;
+    const yb = (b.start + b.end) / 2 / height;
+    return hb + yb * 40 - (ha + ya * 40);
+  });
+  const best = clusters[0];
+  // Include neighboring pink clusters that are still in lower half
+  let top = best.start;
+  let bottom = best.end;
+  for (const c of clusters) {
+    if (c.start >= height * 0.35 && c.start - bottom < 28) {
+      top = Math.min(top, c.start);
+      bottom = Math.max(bottom, c.end);
+    }
+  }
+
+  top = Math.max(0, top - 6);
+  bottom = Math.min(height, bottom + 8);
+  const cropH = Math.max(1, bottom - top);
+  const out = Buffer.alloc(width * cropH * 3, 255);
+
+  // 1px dilate so thin glyphs stay connected after thresholding
+  for (let y = top; y < bottom; y++) {
+    for (let x = 0; x < width; x++) {
+      let hit = 0;
+      for (let dy = -1; dy <= 1 && !hit; dy++) {
+        for (let dx = -1; dx <= 1 && !hit; dx++) {
+          const yy = y + dy;
+          const xx = x + dx;
+          if (yy < 0 || yy >= height || xx < 0 || xx >= width) continue;
+          if (pinkMask[yy * width + xx]) hit = 1;
+        }
+      }
+      if (!hit) continue;
+      const dst = ((y - top) * width + x) * 3;
+      out[dst] = 0;
+      out[dst + 1] = 0;
+      out[dst + 2] = 0;
+    }
+  }
+
   return sharp(out, { raw: { width, height: cropH, channels: 3 } })
-    .resize({ width: width * zoom, kernel: 'lanczos3' })
+    .resize({ width: Math.round(width * zoom), kernel: 'lanczos3' })
+    .sharpen()
     .withMetadata({ density: 300 })
     .png()
     .toBuffer();

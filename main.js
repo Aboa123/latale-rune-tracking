@@ -5,7 +5,12 @@ const path = require('path');
 const fs = require('fs');
 const { captureRegion, detectPinkLineHints, extractPinkTextPng } = require('./src/capture');
 const { recognize, terminate: terminateOcr } = require('./src/ocr');
-const { analyzeFromOcr, analyzeFromRuneIds } = require('./src/analyzer');
+const {
+  analyzeFromOcr,
+  analyzeFromRuneIds,
+  scoreKingCandidates,
+  resolveKingFromVotes,
+} = require('./src/analyzer');
 const { pickKingAmongCandidates } = require('./src/rune-vision');
 const { detectActiveRuneIds } = require('./src/rune-grid-vision');
 
@@ -270,24 +275,95 @@ async function runAnalysis(opts = {}) {
     let result = ocrResult;
 
     if (grid?.matchedCount === 8) {
-      // Separately OCR'd magenta text identifies the king. Only accept a grid-proven ID.
-      const pinkResult = pinkText ? analyzeFromOcr(pinkText) : null;
-      let kingId =
-        pinkResult?.rows.find((r) => grid.ids.includes(r.id))?.id ||
-        ocrResult.rows.find((r) => r.isKing && grid.ids.includes(r.id))?.id ||
-        null;
-      let kingVision = null;
+      // Multi-signal king pick among only the 8 active IDs:
+      // 1) pink-text king-effect match  2) full OCR king effects  3) circle vision (weak)
+      // Effects OCR is authoritative; vision only ties/breaks weak OCR.
+      const votes = [];
+      let pinkKing = pinkText ? scoreKingCandidates(pinkText, grid.ids) : null;
+      let panelKing = scoreKingCandidates(ocrText, grid.ids);
+      // Prefer pink-only OCR's last-lines if pink empty/weak — panel already covers that.
+      if (pinkKing?.id) {
+        const w =
+          pinkKing.kingHits >= 2 ? 4.0 : pinkKing.margin >= 40 ? 3.2 : 2.4;
+        votes.push({
+          id: pinkKing.id,
+          weight: w,
+          source: 'pink-effects',
+          confidence: pinkKing.confidence,
+          margin: pinkKing.margin,
+        });
+      }
+      if (panelKing?.id) {
+        // Full panel OCR is reliable for pink (doubled) numbers at list bottom
+        const w =
+          panelKing.kingHits >= 2 ? 3.6 : panelKing.margin >= 40 ? 2.8 : 1.8;
+        votes.push({
+          id: panelKing.id,
+          weight: w,
+          source: 'panel-effects',
+          confidence: panelKing.confidence,
+          margin: panelKing.margin,
+        });
+      }
+      // Heuristic OCR isKing (bottom/pink band grouping) as soft hint
+      const ocrHeuristicKing = ocrResult.rows.find(
+        (r) => r.isKing && grid.ids.includes(r.id)
+      );
+      if (ocrHeuristicKing) {
+        votes.push({
+          id: ocrHeuristicKing.id,
+          weight: 1.2,
+          source: 'ocr-heuristic',
+          confidence: ocrHeuristicKing.confidence,
+        });
+      }
 
-      // Fallback: compare only the eight active candidates against the center rune.
-      if (!kingId && shot.circlePng) {
+      let kingVision = null;
+      if (shot.circlePng) {
         try {
           kingVision = await pickKingAmongCandidates(shot.circlePng, grid.ids);
-          if (kingVision && kingVision.margin >= 3 && grid.ids.includes(kingVision.id)) {
-            kingId = kingVision.id;
+          if (kingVision?.id && grid.ids.includes(kingVision.id)) {
+            // Glyph match under blue fire is noisy: keep vision weak unless clear win
+            let w = 0;
+            if (kingVision.accepted && kingVision.margin >= 8) {
+              w = 1.6;
+            } else if (kingVision.accepted && kingVision.margin >= 6) {
+              w = 1.2;
+            } else if (kingVision.margin >= 8 && kingVision.confidence >= 35) {
+              w = 0.9;
+            } else if (kingVision.confidence >= 50 && kingVision.margin >= 4) {
+              w = 0.7;
+            }
+            // Do not let vision override a decisive pink/panel king
+            const effectsSolid =
+              (pinkKing?.id && pinkKing.kingHits >= 2) ||
+              (panelKing?.id && panelKing.kingHits >= 2 && panelKing.margin >= 30);
+            if (effectsSolid && kingVision.id !== pinkKing?.id && kingVision.id !== panelKing?.id) {
+              w = Math.min(w, 0.5);
+            }
+            if (w > 0) {
+              votes.push({
+                id: kingVision.id,
+                weight: w,
+                source: 'circle-vision',
+                confidence: kingVision.confidence,
+                margin: kingVision.margin,
+              });
+            }
           }
         } catch (e) {
           console.warn('king vision failed', e);
         }
+      }
+
+      const fused = resolveKingFromVotes(grid.ids, votes);
+      let kingId = fused.id;
+
+      // Prefer strong effect OCR over vision accepted alone
+      if (!kingId && pinkKing?.id) kingId = pinkKing.id;
+      if (!kingId && panelKing?.id) kingId = panelKing.id;
+      if (!kingId && kingVision?.accepted && grid.ids.includes(kingVision.id)) {
+        kingId = kingVision.id;
       }
 
       result = analyzeFromRuneIds(grid.ids, kingId);
@@ -300,7 +376,10 @@ async function runAnalysis(opts = {}) {
       result.kingOcr = {
         text: pinkText,
         id: kingId,
+        pinkRanked: pinkKing?.ranked?.slice(0, 4) || [],
+        panelRanked: panelKing?.ranked?.slice(0, 4) || [],
       };
+      result.kingVotes = fused;
       if (kingVision) {
         result.kingVision = {
           id: kingVision.id,
@@ -309,27 +388,82 @@ async function runAnalysis(opts = {}) {
             : '',
           confidence: kingVision.confidence,
           margin: kingVision.margin,
+          accepted: !!kingVision.accepted,
+          alternatives: kingVision.alternatives,
+          center: kingVision.center,
         };
       }
       if (!kingId) {
         result.warning = '룬 8개는 확정했지만 왕룬을 판별하지 못했습니다.';
       }
     } else if (shot.circlePng && result.matchedCount > 0) {
-      // Grid alignment failed: retain OCR fallback and use center among OCR candidates.
-      try {
-        const kingPick = await pickKingAmongCandidates(
-          shot.circlePng,
-          result.rows.map((r) => r.id)
-        );
-        if (kingPick && kingPick.id && kingPick.margin >= 4) {
-          result = analyzeFromOcr(ocrText, {
-            kingLineIndexes: pinkBands,
-            forcedKingId: kingPick.id,
+      // Grid alignment failed: fuse OCR effect match + center vision among OCR IDs.
+      const ocrIds = result.rows.map((r) => r.id);
+      const votes = [];
+      const panelKing = scoreKingCandidates(ocrText, ocrIds);
+      if (panelKing?.id) {
+        votes.push({
+          id: panelKing.id,
+          weight: panelKing.kingHits >= 2 ? 3.5 : 2.0,
+          source: 'panel-effects',
+          confidence: panelKing.confidence,
+          margin: panelKing.margin,
+        });
+      }
+      if (pinkText) {
+        const pinkKing = scoreKingCandidates(pinkText, ocrIds);
+        if (pinkKing?.id) {
+          votes.push({
+            id: pinkKing.id,
+            weight: pinkKing.kingHits >= 2 ? 4.0 : 2.4,
+            source: 'pink-effects',
+            confidence: pinkKing.confidence,
+            margin: pinkKing.margin,
           });
-          result.method = 'ocr+circle-king';
+        }
+      }
+      try {
+        const kingPick = await pickKingAmongCandidates(shot.circlePng, ocrIds);
+        if (kingPick?.id) {
+          let w = 0;
+          if (kingPick.accepted && kingPick.margin >= 6) w = 1.4;
+          else if (kingPick.confidence >= 40 && kingPick.margin >= 5) w = 0.8;
+          if (w > 0) {
+            votes.push({
+              id: kingPick.id,
+              weight: w,
+              source: 'circle-vision',
+              confidence: kingPick.confidence,
+              margin: kingPick.margin,
+            });
+          }
+          result.kingVision = {
+            id: kingPick.id,
+            name: kingPick.rune
+              ? String(kingPick.rune.name).replace(/[《》]/g, '').trim()
+              : '',
+            confidence: kingPick.confidence,
+            margin: kingPick.margin,
+            accepted: !!kingPick.accepted,
+          };
         }
       } catch (e) {
         console.warn('king vision failed', e);
+      }
+
+      const fused = resolveKingFromVotes(ocrIds, votes);
+      const forced =
+        fused.id ||
+        panelKing?.id ||
+        (result.kingVision?.accepted ? result.kingVision.id : null) ||
+        null;
+      if (forced) {
+        result = analyzeFromOcr(ocrText, {
+          kingLineIndexes: pinkBands,
+          forcedKingId: forced,
+        });
+        result.method = 'ocr+fused-king';
+        result.kingVotes = fused;
       }
     }
 
@@ -409,7 +543,7 @@ function registerIpc() {
 app.whenReady().then(() => {
   Menu.setApplicationMenu(null);
   if (process.platform === 'win32') {
-    app.setAppUserModelId('com.latale.runeword-analyzer');
+    app.setAppUserModelId('com.latale.rune-tracking');
   }
   registerIpc();
   createResultWindow();

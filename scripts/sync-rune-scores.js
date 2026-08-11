@@ -3,8 +3,7 @@
 const fs = require('fs');
 const path = require('path');
 
-// Source: https://latale.wiki/runewords (2026-08-04)
-// Eight runes + one doubled king rune = 500 point maximum.
+// 8 slots + king score x2 => max 500
 const SCORES = {
   1: 6,
   2: 2.5,
@@ -45,7 +44,9 @@ for (const rune of data) {
   if (!(rune.id in SCORES)) throw new Error(`Missing score for rune ${rune.id}`);
   rune.score = SCORES[rune.id];
   if ('kingScore' in rune) delete rune.kingScore;
+  rune.on = `../assets/runes/ON_${rune.id}.jpg`;
+  rune.off = `../assets/runes/OFF_${rune.id}.jpg`;
 }
 
 fs.writeFileSync(target, `${JSON.stringify(data, null, 2)}\n`, 'utf8');
-console.log(`Synced ${data.length} rune scores from latale.wiki (max 500).`);
+console.log(`Synced ${data.length} rune scores (max 500).`);

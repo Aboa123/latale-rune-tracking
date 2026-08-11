@@ -5,6 +5,8 @@ dist/
 page.html
 rune-data-raw.js
 rune-snippet.js
+.DS_Store
+Thumbs.db
 
 # OCR language data is required at runtime
 tessdata/*
@@ -32,4 +34,5 @@ assets/portable-extract-test/
 
 assets/debug-*.png
 assets/runes/_crop_*.png
+assets/debug-last/
 

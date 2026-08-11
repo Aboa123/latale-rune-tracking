@@ -166,7 +166,6 @@ function buildCatalog() {
         add(doubled.keyword.replace(/크리티컬/, '크리'), doubled.value, doubled.unit, rune, partIndex, true);
       }
     });
-    // Game client may still show old effect text not listed on latale.info
     if (Array.isArray(rune.aliases)) {
       rune.aliases.forEach((alias) => {
         const a = splitKeywordValue(alias);
@@ -233,14 +232,20 @@ function repairOcrLine(raw) {
 
   // Crit OCR: 크2 / 크 2 / 크! → 크리
   s = s.replace(/크\s*[2Zz!\|l]\s*/g, '크리');
+  // Pink-crop OCR common garbling: 크리터필/크리터벨 → 크리티컬
+  s = s.replace(/크리\s*터\s*[필벨컬궐펼벨]/g, '크리티컬');
+  s = s.replace(/크리\s*티\s*[컬궐]/g, '크리티컬');
   s = s.replace(/크리\s*티컬/g, '크리티컬');
+  s = s.replace(/크리티컬/g, '크리티컬');
+  s = s.replace(/대매지|대미니|대대지|더미지|대미피/g, '대미지');
   s = s.replace(/크리\s*대미/g, '크리대미');
   s = s.replace(/크리대미지/g, '크리티컬 대미지');
   s = s.replace(/인첼트|인체트|인첸트/g, '인챈트');
-  s = s.replace(/확를/g, '확률');
-  s = s.replace(/를리|틀리|뿔리|블리|쿨리/g, '물리');
+  s = s.replace(/확뮬|확울|확를/g, '확률');
+  s = s.replace(/를리|틀리|뿔리|블리|쿨리|빨건|즐긴/g, '물리');
   s = s.replace(/\+\s*100\s*>\s*%/g, '+100%');
   s = s.replace(/\+\s*100\s*["'.]\s*%?/g, '+100%');
+  s = s.replace(/[~+\-]*[!liI|]00\s*%/gi, '+100%');
 
   // Soft repair for king-ish normal monster lines
   if (/일반/.test(s) && /지배|지틀/.test(s) && !/대미/.test(s)) {
@@ -374,10 +379,15 @@ function parseOcrLines(ocrText) {
 
 function looksLikeKingLine(line) {
   const s = line.norm || normalize(line.raw || line);
+  // Pink (doubled) effect fingerprints commonly seen in king line slots
   return (
     /일반/.test(s) ||
     /경험치/.test(s) ||
-    (/보스/.test(s) && /\+?\s*(20000|10\.0|10%)/.test(s))
+    (/보스/.test(s) && /\+?\s*(20000|10\.0|10%)/.test(s)) ||
+    (/크리/.test(s) && /\+?\s*100\s*%/.test(s)) ||
+    (/크리/.test(s) && /확률/.test(s) && /\+?\s*2\s*%/.test(s)) ||
+    /\+?\s*12000\b/.test(s) ||
+    (/지배/.test(s) && /\+?\s*6\s*%/.test(s))
   );
 }
 
@@ -538,12 +548,20 @@ function groupIntoRunes(lines, kingLineIndexes = new Set(), options = {}) {
     const hasExp = m.lineIndexes.some(
       (i) => /경험치/.test(lines[i].norm || lines[i].raw) && kingLineIndexes.has(i)
     );
+    const hasCritKing = m.lineIndexes.some((i) => {
+      const t = lines[i].norm || lines[i].raw || '';
+      return (
+        (/크리/.test(t) && /\+?\s*100\s*%/.test(t)) ||
+        (/크리/.test(t) && /확률/.test(t) && /\+?\s*2\s*%/.test(t))
+      );
+    });
     const touchesBottom = m.lineIndexes.some((i) => i >= lines.length - 2);
     const finalScore =
       scoreRune(m.rune, true) +
       (onPink ? 50 : 0) +
       (hasIlban ? 120 : 0) +
       (hasExp ? 100 : 0) +
+      (hasCritKing ? 130 : 0) +
       (touchesBottom ? 30 : 0);
     if (finalScore > bestKingScore) {
       bestKingScore = finalScore;
@@ -739,11 +757,211 @@ function analyzeFromRuneIds(runeIds, kingId = null) {
   };
 }
 
+/** King (doubled) effect strings for a rune. */
+function kingEffectParts(rune) {
+  if (!rune) return [];
+  if (Array.isArray(rune.kingEffects) && rune.kingEffects.length) return rune.kingEffects;
+  return (rune.effects || []).map((e) => doubleEffectText(e));
+}
+
+/**
+ * Rank candidate runes by how well OCR text matches their *king* (doubled) effects.
+ * Pink / bottom-of-list text is the ideal input.
+ */
+function scoreKingCandidates(ocrText, candidateIds) {
+  const ids = [...new Set((candidateIds || []).map(Number).filter(Number.isFinite))];
+  if (!ids.length) return { id: null, confidence: 0, margin: 0, ranked: [] };
+
+  const lines = parseOcrLines(ocrText);
+  const tallies = new Map(ids.map((id) => [id, { score: 0, kingHits: 0, normalHits: 0 }]));
+
+  for (const line of lines) {
+    const cands = matchLineToCandidates(line.raw).filter((c) => tallies.has(c.rune.id));
+    if (!cands.length) continue;
+
+    // Prefer stronger candidates on this line only
+    const best = cands[0].score;
+    for (const c of cands) {
+      if (c.score < best - 12) continue;
+      const t = tallies.get(c.rune.id);
+      if (c.isKingVariant) {
+        t.score += c.score + 25;
+        t.kingHits += 1;
+      } else {
+        // Base match from pink text is weak signal (usually wrong unit scale)
+        t.score += c.score * 0.2;
+        t.normalHits += 1;
+      }
+    }
+  }
+
+  // Direct part coverage: each expected king effect that fits a line
+  for (const id of ids) {
+    const rune = RUNE_DATA.find((r) => r.id === id);
+    if (!rune) continue;
+    const parts = kingEffectParts(rune);
+    let covered = 0;
+    parts.forEach((_e, partIndex) => {
+      const hit = lines.some((line) => lineFitsPart(line.raw, rune, partIndex, true));
+      if (hit) covered += 1;
+    });
+    if (covered) {
+      const t = tallies.get(id);
+      t.score += covered * 55;
+      t.kingHits += covered;
+      // Combo-style full cover
+      if (parts.length >= 2 && covered === parts.length) t.score += 40;
+    }
+  }
+
+  // Distinctive king values that appear as tokens (hard OCR anchors)
+  const rawBlob = lines.map((l) => l.raw).join('\n');
+  const blob = lines.map((l) => normalize(l.raw)).join('\n');
+  for (const id of ids) {
+    const rune = RUNE_DATA.find((r) => r.id === id);
+    if (!rune) continue;
+    const parts = kingEffectParts(rune);
+    let anchors = 0;
+    for (const e of parts) {
+      const { value, unit } = splitKeywordValue(e);
+      if (value == null) continue;
+      const re =
+        unit === '%'
+          ? new RegExp(`(?:\\+|\\b)${String(value).replace('.', '\\.')}\\s*%`)
+          : new RegExp(`(?:\\+|\\b)${String(value)}\\b`);
+      if (re.test(blob) || re.test(rawBlob)) anchors += 1;
+    }
+    if (anchors) {
+      const t = tallies.get(id);
+      t.score += anchors * 18;
+      // Value-only anchors still count when Hangul OCR is garbled (pink crop)
+      if (anchors >= 2 && t.kingHits < anchors) t.kingHits = anchors;
+    }
+  }
+
+  // Soft pattern fallback for severely garbled pink OCR (크리→크리터, 대매지…)
+  const softCritDmg = /크\s*리?.{0,8}(대미|대매|대머)/.test(rawBlob) && /(?:\+|!|l|i)?\s*100\s*%/.test(rawBlob);
+  const softCritRate = /크\s*리?.{0,10}(확률|확뮬|확를|확률)/.test(rawBlob) && /(?:\+|)\s*2\s*%/.test(rawBlob);
+  const softIlban =
+    /일반/.test(rawBlob) &&
+    (/(?:\+|)\s*12000\b/.test(rawBlob) || (/(?:\+|)\s*6\s*%/.test(rawBlob) && /지배/.test(rawBlob)));
+  if (softCritDmg || softCritRate) {
+    for (const id of [30, 11]) {
+      if (!tallies.has(id)) continue;
+      const t = tallies.get(id);
+      if (softCritDmg) {
+        t.score += id === 30 ? 90 : 55;
+        t.kingHits += 1;
+      }
+      if (softCritRate && id === 30) {
+        t.score += 90;
+        t.kingHits += 1;
+      }
+    }
+  }
+  if (softIlban && tallies.has(28)) {
+    const t = tallies.get(28);
+    t.score += 100;
+    t.kingHits += 2;
+  }
+
+  const ranked = [...tallies.entries()]
+    .map(([id, t]) => {
+      const rune = RUNE_DATA.find((r) => r.id === id);
+      return {
+        id,
+        name: rune ? cleanName(rune.name) : String(id),
+        score: Math.round(t.score),
+        kingHits: t.kingHits,
+        normalHits: t.normalHits,
+      };
+    })
+    .sort((a, b) => b.score - a.score || b.kingHits - a.kingHits);
+
+  const top = ranked[0];
+  const second = ranked[1];
+  if (!top || top.score < 40 || top.kingHits < 1) {
+    return {
+      id: null,
+      confidence: 0,
+      margin: 0,
+      kingHits: top ? top.kingHits : 0,
+      ranked,
+      lines: lines.map((l) => l.raw),
+    };
+  }
+
+  const margin = top.score - (second ? second.score : 0);
+  // Need either clear lead or multi hit coverage of king parts
+  const accept =
+    margin >= 20 ||
+    (top.kingHits >= 2 && margin >= 8) ||
+    top.score >= 100 ||
+    (top.kingHits >= 2 && top.score >= 70);
+  return {
+    id: accept ? top.id : null,
+    confidence: Math.min(100, top.score),
+    margin,
+    kingHits: top.kingHits,
+    ranked,
+    lines: lines.map((l) => l.raw),
+  };
+}
+
+/**
+ * Fuse pink-effect OCR, full-panel OCR king, and circle vision votes.
+ * sources: [{ id, weight, source, confidence?, margin? }, ...]
+ */
+function resolveKingFromVotes(candidateIds, sources) {
+  const ids = new Set((candidateIds || []).map(Number).filter(Number.isFinite));
+  const weights = new Map([...ids].map((id) => [id, 0]));
+  const detail = [];
+
+  for (const s of sources || []) {
+    const id = Number(s?.id);
+    if (!ids.has(id)) continue;
+    const w = Number(s.weight) || 0;
+    if (w <= 0) continue;
+    weights.set(id, weights.get(id) + w);
+    detail.push({
+      id,
+      source: s.source || '?',
+      weight: w,
+      confidence: s.confidence,
+      margin: s.margin,
+    });
+  }
+
+  const ranked = [...weights.entries()]
+    .map(([id, weight]) => ({ id, weight: Math.round(weight * 10) / 10 }))
+    .sort((a, b) => b.weight - a.weight);
+
+  const top = ranked[0];
+  const second = ranked[1];
+  if (!top || top.weight < 1.2) {
+    return { id: null, confidence: 0, margin: 0, ranked, votes: detail };
+  }
+
+  const margin = top.weight - (second ? second.weight : 0);
+  // Accept clear winner; soft-accept single strong source
+  const accept = margin >= 0.6 || top.weight >= 2.5;
+  return {
+    id: accept ? top.id : null,
+    confidence: Math.min(100, Math.round(top.weight * 25)),
+    margin: Math.round(margin * 10) / 10,
+    ranked,
+    votes: detail,
+  };
+}
+
 module.exports = {
   RUNE_DATA,
   analyzeFromOcr,
   analyzeFromRuneIds,
   analyzeFromSampleEffects,
+  scoreKingCandidates,
+  resolveKingFromVotes,
+  kingEffectParts,
   normalize,
   judge,
   scoreRune,

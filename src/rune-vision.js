@@ -267,7 +267,8 @@ function clearTemplateCache() {
 /** Center = 왕룬, 바깥 7 = 일반 */
 function buildSlots(width, height, angleOffsetDeg = 0, radiusScale = 0.34, center = null) {
   const cx = center?.x ?? width / 2;
-  const cy = center?.y ?? height / 2;
+  // Content center sits slightly below geometric mid when chrome was partial
+  const cy = center?.y ?? height * 0.52;
   const m = Math.min(width, height);
   const radius = m * radiusScale;
   const crop = Math.max(28, Math.round(m * 0.16));
@@ -289,6 +290,7 @@ function buildSlots(width, height, angleOffsetDeg = 0, radiusScale = 0.34, cente
 
 /** Detect 1 center + 7 outer slot centers from yellow/orange glyph heat. */
 async function detectSlotsFromGlow(imgBuffer) {
+  // Caller should pass title-trimmed circle (see analyzeCircleImage / trimCircleChrome)
   const { data, info } = await sharp(imgBuffer)
     .removeAlpha()
     .raw()
@@ -320,7 +322,7 @@ async function detectSlotsFromGlow(imgBuffer) {
   for (let y = 8; y < h - 8; y++) {
     for (let x = 8; x < w - 8; x++) {
       const v = blur[y * w + x];
-      if (v < 60) continue;
+      if (v < 50) continue;
       let ok = true;
       for (let dy = -5; dy <= 5 && ok; dy++) {
         for (let dx = -5; dx <= 5; dx++) {
@@ -349,13 +351,13 @@ async function detectSlotsFromGlow(imgBuffer) {
 
   if (stones.length < 5) return null;
 
+  // Center = nearest to content center (king), not strongest flame blob
   const imgCx = w / 2;
-  const imgCy = h / 2;
-  // King: strongest near image center
+  const imgCy = h * 0.52;
   const kingCand = [...stones]
     .map((s) => ({ ...s, r: Math.hypot(s.x - imgCx, s.y - imgCy) }))
     .filter((s) => s.r < Math.min(w, h) * 0.22)
-    .sort((a, b) => b.v / (1 + a.r) - a.v / (1 + b.r) || a.r - b.r);
+    .sort((a, b) => a.r - b.r || b.v - a.v);
   const king = kingCand[0] || [...stones].sort((a, b) => Math.hypot(a.x - imgCx, a.y - imgCy) - Math.hypot(b.x - imgCx, b.y - imgCy))[0];
   if (!king) return null;
 
@@ -364,7 +366,7 @@ async function detectSlotsFromGlow(imgBuffer) {
   const withR = stones
     .filter((s) => Math.hypot(s.x - cx, s.y - cy) > 8)
     .map((s) => ({ ...s, r: Math.hypot(s.x - cx, s.y - cy), ang: Math.atan2(s.y - cy, s.x - cx) }))
-    .filter((s) => s.r > Math.min(w, h) * 0.18 && s.r < Math.min(w, h) * 0.55);
+    .filter((s) => s.r > Math.min(w, h) * 0.16 && s.r < Math.min(w, h) * 0.58);
 
   if (withR.length < 5) return null;
 
@@ -401,14 +403,14 @@ async function detectSlotsFromGlow(imgBuffer) {
   const m = Math.min(w, h);
   const crop = Math.max(28, Math.round(m * 0.16));
   const kingCrop = Math.max(34, Math.round(m * 0.2));
-  // 왕룬은 불꽃으로 heat centroid가 위로 쏠리므로 이미지 기하 중심 사용
-  const slots = [{ id: 'king', isKing: true, x: w / 2, y: h / 2, crop: kingCrop }];
+  // 왕룬: title-trimmed content center (or nearest stone) + optional heat peak
+  const slots = [{ id: 'king', isKing: true, x: imgCx, y: imgCy, crop: kingCrop }];
   ordered.forEach((s, i) => {
     slots.push({ id: `o${i}`, isKing: false, x: s.x, y: s.y, crop });
   });
   const medianR =
     ordered.map((s) => s.r).sort((a, b) => a - b)[Math.floor(ordered.length / 2)] || m * 0.34;
-  return { slots, center: { x: cx, y: cy }, radiusScale: medianR / m, detected: true };
+  return { slots, center: { x: imgCx, y: imgCy }, radiusScale: medianR / m, detected: true };
 }
 
 async function cropSlot(imgBuffer, slot, imgW, imgH) {
@@ -424,6 +426,106 @@ async function cropSlot(imgBuffer, slot, imgW, imgH) {
   return sharp(imgBuffer).extract({ left, top, width, height }).png().toBuffer();
 }
 
+/**
+ * Drop title chrome ("신규 룬 워드 효과") so geometric center = 왕룬 stone.
+ * Also return content-space center usable for king crop.
+ */
+async function trimCircleChrome(circlePng) {
+  const meta = await sharp(circlePng).metadata();
+  const width = meta.width || 1;
+  const height = meta.height || 1;
+  // Title bar is typically 9~14% of square crops that include the panel header
+  const topTrim = Math.round(height * 0.12);
+  if (topTrim < 8 || height - topTrim < 80) {
+    return {
+      png: circlePng,
+      width,
+      height,
+      kingCx: width / 2,
+      kingCy: height / 2,
+      trimmed: false,
+    };
+  }
+  const png = await sharp(circlePng)
+    .extract({ left: 0, top: topTrim, width, height: height - topTrim })
+    .png()
+    .toBuffer();
+  const h2 = height - topTrim;
+  return {
+    png,
+    width,
+    height: h2,
+    // After trim, king sits near content center (blue fire drifts slightly up)
+    kingCx: width / 2,
+    kingCy: h2 * 0.5 + h2 * 0.02,
+    trimmed: true,
+    topTrim,
+  };
+}
+
+/**
+ * Locate king glyph center: orange heat nearest content-center after chrome trim.
+ * Prefer stone core over outer ring cyan and rising flame (which pulls y up).
+ */
+async function findKingCenter(circlePng) {
+  const trimmed = await trimCircleChrome(circlePng);
+  const { data, info } = await sharp(trimmed.png)
+    .removeAlpha()
+    .raw()
+    .toBuffer({ resolveWithObject: true });
+  const w = info.width;
+  const h = info.height;
+  const heat = new Float32Array(w * h);
+  for (let i = 0; i < w * h; i++) {
+    const o = i * 3;
+    const r = data[o];
+    const g = data[o + 1];
+    const b = data[o + 2];
+    if (r > 248 && g > 235) continue;
+    // Yellow glyph stroke only
+    if (r > 175 && g > 125 && b < 150 && r - b > 55 && g - b > 22 && r >= g * 0.82) {
+      heat[i] = (r - b) * 0.65 + (g - b) * 0.3;
+    }
+  }
+  const blur = new Float32Array(w * h);
+  for (let y = 2; y < h - 2; y++) {
+    for (let x = 2; x < w - 2; x++) {
+      let s = 0;
+      for (let dy = -2; dy <= 2; dy++) {
+        for (let dx = -2; dx <= 2; dx++) s += heat[(y + dy) * w + (x + dx)];
+      }
+      blur[y * w + x] = s;
+    }
+  }
+  const cx0 = w / 2;
+  const cy0 = h * 0.52;
+  const maxR = Math.min(w, h) * 0.2;
+  let best = null;
+  for (let y = Math.floor(h * 0.28); y < h * 0.72; y++) {
+    for (let x = Math.floor(w * 0.28); x < w * 0.72; x++) {
+      const v = blur[y * w + x];
+      if (v < 90) continue;
+      const r = Math.hypot(x - cx0, y - cy0);
+      if (r > maxR) continue;
+      let ok = true;
+      for (let dy = -4; dy <= 4 && ok; dy++) {
+        for (let dx = -4; dx <= 4; dx++) {
+          if (blur[(y + dy) * w + (x + dx)] > v) ok = false;
+        }
+      }
+      if (!ok) continue;
+      const score = v / (1 + r * 1.4);
+      if (!best || score > best.score) best = { x, y, v, r, score };
+    }
+  }
+  return {
+    ...trimmed,
+    kingCx: best ? best.x : trimmed.kingCx,
+    kingCy: best ? best.y : trimmed.kingCy,
+    peak: best,
+  };
+}
+
 async function pickKingAmongCandidates(circlePng, candidateIds) {
   const ids = [...new Set((candidateIds || []).filter((id) => Number.isFinite(id)))];
   if (!ids.length || !circlePng) return null;
@@ -431,25 +533,78 @@ async function pickKingAmongCandidates(circlePng, candidateIds) {
   const cands = templates.filter((t) => ids.includes(t.rune.id));
   if (!cands.length) return null;
 
-  const meta = await sharp(circlePng).metadata();
-  const width = meta.width || 1;
-  const height = meta.height || 1;
-  const kingCrop = Math.max(36, Math.round(Math.min(width, height) * 0.22));
-  const cropBuf = await cropSlot(circlePng, { x: width / 2, y: height / 2, crop: kingCrop }, width, height);
-  const map = await extractOrangeMap(cropBuf, MAP_SIZE, { dilate: 1, coreRadius: 0.34 });
-  const sig = radialSignature(map);
-  const scored = cands
-    .map((t) => ({ id: t.rune.id, rune: t.rune, score: similarity(map, t.map, sig, t.sig) }))
-    .sort((a, b) => b.score - a.score);
-  const top = scored[0];
-  const second = scored[1];
-  if (!top || top.score < 0.2) return null;
+  const region = await findKingCenter(circlePng);
+  const img = region.png;
+  const width = region.width;
+  const height = region.height;
+  const m = Math.min(width, height);
+  const cx = region.kingCx;
+  const cy = region.kingCy;
+
+  const bestById = new Map(cands.map((t) => [t.rune.id, { id: t.rune.id, rune: t.rune, score: -1 }]));
+
+  async function probe(cropScale, dy, dilate, coreRadius) {
+    const crop = Math.max(32, Math.round(m * cropScale));
+    const cropBuf = await cropSlot(
+      img,
+      { x: cx, y: cy + dy, crop },
+      width,
+      height
+    );
+    const map = await extractOrangeMap(cropBuf, MAP_SIZE, { dilate, coreRadius });
+    let energy = 0;
+    for (let i = 0; i < map.length; i++) energy += map[i] * map[i];
+    if (energy < 0.05) return;
+    const sig = radialSignature(map);
+    for (const t of cands) {
+      const score = similarity(map, t.map, sig, t.sig);
+      const cur = bestById.get(t.rune.id);
+      if (score > cur.score) cur.score = score;
+    }
+  }
+
+  // Coarse pass around blue-core king (tiny dy only — flame already accounted for by peak)
+  for (const scale of [0.17, 0.2, 0.24, 0.28]) {
+    for (const dy of [0, m * 0.02, -m * 0.02, m * 0.04]) {
+      await probe(scale, dy, 1, 0.34);
+    }
+  }
+
+  let scored = [...bestById.values()].filter((s) => s.score >= 0).sort((a, b) => b.score - a.score);
+  let top = scored[0];
+  let second = scored[1];
+  let marginPct = top && second ? (top.score - second.score) * 100 : top ? 100 : 0;
+
+  // Refine if still ambiguous
+  if (!top || top.score < 0.28 || marginPct < 5) {
+    for (const scale of [0.19, 0.23, 0.27]) {
+      for (const dy of [0, m * 0.03, -m * 0.015]) {
+        for (const core of [0.3, 0.36, 0.42]) {
+          await probe(scale, dy, 0, core);
+          await probe(scale, dy, 1, core);
+        }
+      }
+    }
+    scored = [...bestById.values()].filter((s) => s.score >= 0).sort((a, b) => b.score - a.score);
+    top = scored[0];
+    second = scored[1];
+    marginPct = top && second ? (top.score - second.score) * 100 : top ? 100 : 0;
+  }
+
+  if (!top || top.score < 0.18) return null;
+
+  const margin = Math.round((top.score - (second ? second.score : 0)) * 100);
+  const confidence = Math.round(top.score * 100);
+  // Vision is noisy for fire-wreathed center: require clearer separation to "accept"
+  const accepted = confidence >= 28 && margin >= 6;
   return {
     id: top.id,
     rune: top.rune,
-    confidence: Math.round(top.score * 100),
-    margin: Math.round((top.score - (second ? second.score : 0)) * 100),
-    alternatives: scored.slice(0, 3).map((r) => ({
+    confidence,
+    margin,
+    accepted,
+    center: { x: cx, y: cy, trimmed: region.trimmed },
+    alternatives: scored.slice(0, 4).map((r) => ({
       id: r.id,
       name: cleanName(r.rune.name),
       score: Math.round(r.score * 100),
@@ -459,9 +614,11 @@ async function pickKingAmongCandidates(circlePng, candidateIds) {
 
 async function analyzeCircleImage(pngBuffer) {
   const templates = await loadTemplates();
-  const meta = await sharp(pngBuffer).metadata();
-  const width = meta.width || 1;
-  const height = meta.height || 1;
+  // Work in title-trimmed space so center slot = 왕룬
+  const region = await trimCircleChrome(pngBuffer);
+  pngBuffer = region.png;
+  const width = region.width;
+  const height = region.height;
 
   const slotPlans = [];
   const detected = await detectSlotsFromGlow(pngBuffer).catch(() => null);
@@ -478,8 +635,8 @@ async function analyzeCircleImage(pngBuffer) {
   const angleOffsets = [-25.7, -12.8, 0, 12.8, 25.7];
   const radiusScales = [0.3, 0.33, 0.36, 0.39];
   const centers = detected?.center
-    ? [detected.center, null]
-    : [null];
+    ? [detected.center, { x: width / 2, y: height * 0.52 }, null]
+    : [{ x: width / 2, y: height * 0.52 }, null];
   for (const center of centers) {
     for (const radiusScale of radiusScales) {
       for (const offset of angleOffsets) {
@@ -656,4 +813,6 @@ module.exports = {
   extractOrangeMap,
   buildSlots,
   detectSlotsFromGlow,
+  trimCircleChrome,
+  findKingCenter,
 };
