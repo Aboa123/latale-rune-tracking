@@ -41,6 +41,9 @@ npm run test:analyzer
 npm run test:king
 ```
 
+## 실행화면
+<img width="2234" height="943" alt="image" src="https://github.com/user-attachments/assets/9c56dd2c-4ad0-401c-99c4-4b6773e37d7f" />
+
 
 # 주의
 라테일 클라이언트를 조작하는것이 아닌 모니터 화면 자체를 인식하는 것이기에 제재 가능성은 낮긴하지만
